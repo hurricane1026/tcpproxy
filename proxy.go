@@ -5,14 +5,15 @@ import (
     "bufio"
     "os"
     "sync"
-    "log"
+    "time"
 )
 
-func openLogWithFd(fd *os.File) *log.Logger {
-    return log.New(fd, "", log.Ldate|log.Ltime|log.Lmicroseconds)
+func openLogWithFd(fd *os.File) *bufio.Writer{
+    //return log.New(fd, "", log.Ldate|log.Ltime|log.Lmicroseconds)
+    return bufio.NewWriter(fd)
 }
 
-func openLog(path string) (logger *log.Logger, fd *os.File, err error) {
+func openLog(path string) (logger *bufio.Writer, fd *os.File, err error) {
     if fd, err = os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0644); err == nil {
            logger = openLogWithFd(fd)
         }
@@ -44,7 +45,7 @@ func main() {
 
 var l *sync.Mutex = new(sync.Mutex)
 
-func Copy(r *bufio.Reader, w *bufio.Writer, addr_title string, need_log bool, logger *log.Logger) (e error) {
+func Copy(r *bufio.Reader, w *bufio.Writer, addr_title string, need_log bool, logger *bufio.Writer) (e error) {
 
     for {
     buf := make([]byte, 1024)
@@ -55,7 +56,8 @@ func Copy(r *bufio.Reader, w *bufio.Writer, addr_title string, need_log bool, lo
         break
     }
     if need_log {
-        logger.Printf("%s  %s\n", addr_title, string(buf))
+        log_string := fmt.Sprintf("%v %s %s\n", time.Now(), addr_title, string(buf))
+        logger.WriteString(log_string)
     }
 
     if _, e = w.Write(buf[0:n]); e != nil {
@@ -68,7 +70,7 @@ func Copy(r *bufio.Reader, w *bufio.Writer, addr_title string, need_log bool, lo
     return e
 }
 
-func forward(local net.Conn, remoteAddr string, logger *log.Logger) {
+func forward(local net.Conn, remoteAddr string, logger *bufio.Writer) {
     local_reader := bufio.NewReader(local)
     local_writer := bufio.NewWriter(local)
     remote, err := net.Dial("tcp",remoteAddr)
